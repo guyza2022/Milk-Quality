@@ -151,7 +151,7 @@ dirname = os.path.join(dirname,'Models')
 all_models = [name for name in os.listdir(dirname) if name != '.DS_Store']
 
 #authenticate
-ms.connection() #initiate sql connection
+#ms.connection() #initiate sql connection
 
 wait_for_process_text = 'Waiting For Data'
 hide_streamlit_style = """
@@ -167,7 +167,7 @@ if 'uploaded' not in st.session_state:
     st.session_state['process'] = 'No'
     st.session_state['train'] = 'No'
     st.session_state['reload'] = 'Yes' 
-    st.session_state['login'] = 'No'
+    st.session_state['login'] = 'Yes'
     st.session_state['register'] = 'No'
     st.session_state['user'] = False
     st.session_state['save'] = False
