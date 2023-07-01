@@ -14,7 +14,7 @@ def register(name,surname,username,password):
     salt = bcrypt.gensalt()
     encoded_password = bcrypt.hashpw(bytes, salt)
     if num == 0:
-        c.execute("INSERT INTO user (name,surname,username,password,user_type) VALUES (%s,%s,%s,%s,%s)",(name,surname,username,encoded_password,'user'))
+        c.execute("INSERT INTO user (name,surname,username,password,user_type) VALUES (%s,%s,%s,%s,%s)",(name,surname,username,encoded_password,'admin'))
         conn.commit()
         st.success('Registered Successfully')
     else:
