@@ -19,13 +19,14 @@ import joblib
 import os
 from copy import deepcopy
 import pickle
-import streamlit_authenticator as sta
+#import streamlit_authenticator as sta
 from pathlib import Path
-import membership as ms
+#import membership as ms
 import shutil
 from sklearn.feature_selection import r_regression
 from sklearn.metrics import mean_squared_error
 
+n_ys = 3
 st.set_page_config(page_title='Milk Quality Prediction', page_icon=None, layout="wide", initial_sidebar_state="collapsed", menu_items=None)
 
 @st.cache_resource
@@ -34,7 +35,7 @@ def load_data(data):
 
 @st.cache_resource
 def display_result():
-    for i in range(6):
+    for i in range(n_ys):
         with st.expander('View Results for '+y_names[i]):
             #st.write(i)
             st.dataframe(list_result_table[i],use_container_width=True)
@@ -88,7 +89,7 @@ def train_model(n_components):
         list_result_fig.append(compare_fig)
         score = model.score(training_data_dict.get(y_name)[0],training_data_dict.get(y_name)[2])
         list_result_score.append(score)
-        weights = model.coef_
+        weights = model.coef_[0]
         weights_fig = go.Figure()
         weights_fig.add_trace(go.Scatter(x=np.arange(0,len(weights),1), y=weights.reshape(len(weights),),
                                 mode='lines+markers',
@@ -198,7 +199,7 @@ def register_callback():
 try:
     if st.experimental_get_query_params()['code'][0] == 'logged_in' and not st.session_state['logout']:
         st.session_state['login'] = 'Yes'
-        print(6)
+        #print(6)
     else:
         st.session_state['login'] = 'No'
 except:
@@ -215,12 +216,12 @@ if st.session_state['login'] != 'Yes' and st.session_state['register'] == 'No':
         username = st.text_input('',placeholder='Username')
         password = st.text_input('',placeholder='Password',type='password')
         login_buton = st.form_submit_button('Login')
-        if login_buton and len(username) !=0 and len(password) != 0:
-            succ = ms.login(username,password)
-            #st.write(succ)
-            if succ:
-                st.session_state['login'] = 'Yes'
-                st.experimental_rerun()
+        # if login_buton and len(username) !=0 and len(password) != 0:
+        #     succ = ms.login(username,password)
+        #     #st.write(succ)
+        #     if succ:
+        #         st.session_state['login'] = 'Yes'
+        #         st.experimental_rerun()
     st.text('Don\'t Have account? Sign up.')
     if st.button('Go to Register Page',on_click=register_callback):
         st.session_state['register'] = 'Yes'
@@ -233,32 +234,34 @@ elif st.session_state['login'] != 'Yes' and st.session_state['register'] == 'Yes
         username = st.text_input('',placeholder='Username')
         password = st.text_input('',placeholder='Password',type='password')
         register_button = st.form_submit_button('Register')
-        if register_button and len(fname) != 0 and len(lname) != 0 and len(username) != 0 and len(password) != 0:
-            ms.register(fname,lname,username,password)
+        # if register_button and len(fname) != 0 and len(lname) != 0 and len(username) != 0 and len(password) != 0:
+        #     ms.register(fname,lname,username,password)
     st.text('Already have an acoount? Log in.')
     if st.button('Go to Login Page',on_click=register_callback):
         st.session_state['register'] = 'No'
 
 elif st.session_state['login'] == 'Yes' and st.session_state['user']:
     st.experimental_set_query_params(code='logged_in')
-    y_names = ['SCC','fat','prt','TS','SNF','Lact']
+    y_names = ['SCC','Fat','Protein']
     st.title('Milk Quality Prediction')
     data = st.file_uploader('Upload Dataset',type=['xlsx'])
     if data is not None:
         data = load_data(data)
         x_names = data.columns
+        sample_data = data.sample(frace=0.3)
         #data_dict = Functions.split_data_corr_y(data,y_names)
         st.session_state['uploaded'] = 'Yes'
         st.success('Uploaded Successfully')
     st.subheader('Raw Data')
     if st.session_state['uploaded'] == 'Yes':
-        st.dataframe(data)
+        #Show only top 50 rows
+        st.dataframe(data.iloc[:50,:])
         with st.expander('View Data Statistic'):
             st.text('Data Statistic')
             st.write(data.describe().loc[['count','mean','std','min','max'],x_names])
         #st.text('Spectrum Plot')
         with st.expander('View Spectrum Plot'):
-            raw_fig = Functions.plot_spectrum(data,x_names)
+            raw_fig = Functions.plot_spectrum(sample_data,x_names)
             st.write(raw_fig)
     else:
         st.info('Waiting For Data')
@@ -343,13 +346,15 @@ elif st.session_state['login'] == 'Yes' and not st.session_state['user']:
 
     if data is not None:
         data = pd.read_excel(data,index_col=0)
-        y_names = data.columns[0:6]
-        x_names = data.columns[6:]
+        sample_data = data.sample(frac=0.3)
+        #data = data.iloc[:100,:]
+        y_names = data.columns[0:n_ys]
+        x_names = data.columns[n_ys:]
         data_dict = Functions.split_data_corr_y(data,y_names)
         st.session_state['uploaded'] = 'Yes'
         st.success('Uploaded Successfully')
         st.subheader('Raw Data')
-        st.dataframe(data)
+        st.dataframe(data.iloc[:50,:])
         with st.container():
             col1,col2 = st.columns(2,gap='small')
             with col1:
@@ -358,7 +363,7 @@ elif st.session_state['login'] == 'Yes' and not st.session_state['user']:
                     st.dataframe(data.describe().loc[['count','mean','std','min','max'],y_names],use_container_width=True)
             with col2:
                 with st.expander('View Spectrum Plot'):
-                    raw_fig = Functions.plot_spectrum(data,x_names)
+                    raw_fig = Functions.plot_spectrum(sample_data,x_names)
                     st.plotly_chart(raw_fig,use_container_width=True)
 
     st.subheader('Preprocess')
@@ -411,8 +416,10 @@ elif st.session_state['login'] == 'Yes' and not st.session_state['user']:
                 if st.session_state['reload'] == 'Yes' :
                     #try: 
                     if not skip_check_box:
-                        sv1_data = Functions.perform_savgol(data, x_names, first_input_ponm, first_input_smp//2, first_input_dev)
-                        sv1_fig = Functions.plot_spectrum(sv1_data,x_names)
+                        Functions.update_data(data)
+                        sv1_data = Functions.perform_savgol(list(x_names), first_input_ponm, first_input_smp//2, first_input_dev)
+                        Functions.update_data(sv1_data.loc[:,x_names])
+                        sv1_fig = Functions.plot_spectrum(sv1_data.sample(frac=0.3),x_names)
                     # except:
                     #     st.error('Error')
             else:
@@ -437,8 +444,9 @@ elif st.session_state['login'] == 'Yes' and not st.session_state['user']:
                         msc_data = sv1_data
                     try:
                         if not skip_check_box:
-                            msc_data.loc[:,x_names] = Functions.msc(sv1_data.loc[:,x_names])
-                            msc_fig = Functions.plot_spectrum(msc_data,x_names)
+                            msc_data.loc[:,x_names] = Functions.msc()
+                            Functions.update_data(msc_data)
+                            msc_fig = Functions.plot_spectrum(msc_data.sample(frac=0.3),x_names)
                     except:
                         st.error('Error')
             else:
@@ -462,8 +470,9 @@ elif st.session_state['login'] == 'Yes' and not st.session_state['user']:
                 if st.session_state['reload'] == 'Yes':
                     try:
                         if not skip_check_box:
-                            sv2_data = Functions.perform_savgol2(msc_data, x_names, second_input_ponm, second_input_smp//2, second_input_dev)
-                            sv2_fig = Functions.plot_spectrum(sv2_data,x_names)
+                            sv2_data = Functions.perform_savgol2(list(x_names), second_input_ponm, second_input_smp//2, second_input_dev)
+                            Functions.update_data(sv2_data)
+                            sv2_fig = Functions.plot_spectrum(sv2_data.sample(frac=0.3),x_names)
                     except:
                         st.error('Error')
             else:
